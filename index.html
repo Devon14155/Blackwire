@@ -4,9 +4,13 @@
     <meta charset="UTF-8" />
     <link rel="manifest" href="/manifest.webmanifest" />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>NSTAR Chat Console</title>
-    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; connect-src 'self' https://* http://*; img-src 'self' data:; style-src 'self' 'unsafe-inline'; script-src 'self'; font-src 'self';" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+    <meta name="theme-color" content="#0b0d10" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <meta name="description" content="Horizon PWA - Autonomous productivity ecosystem with AI agents, learning vaults, knowledge organization, and task management." />
+    <title>Horizon PWA</title>
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; connect-src 'self' https://* http://* wss://* ws://*; img-src 'self' data: blob:; style-src 'self' 'unsafe-inline'; script-src 'self' 'wasm-unsafe-eval'; worker-src 'self' blob:; font-src 'self' data:; child-src 'self' blob:;" />
   </head>
   <body class="bg-background text-foreground">
     <div id="root"></div>

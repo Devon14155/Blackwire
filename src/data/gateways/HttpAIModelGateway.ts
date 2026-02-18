@@ -1,6 +1,8 @@
 import type { AIModelGateway, CompletionChunk } from "@domain/repositories/AIModelGateway";
 import type { ModelSettings } from "@domain/entities/ModelSettings";
 import type { Message } from "@domain/entities/Message";
+import type { ToolDefinition } from "@domain/entities/Tool";
+import { ToolRegistry } from "@domain/tools/ToolRegistry";
 
 interface RequestConfig {
   url: string;
@@ -13,6 +15,14 @@ interface RequestConfig {
     payload: unknown,
     onChunk: (chunk: CompletionChunk) => Promise<void> | void
   ) => Promise<void> | void;
+}
+
+export interface ExtendedCompletionChunk extends CompletionChunk {
+  toolCalls?: Array<{
+    id: string;
+    name: string;
+    arguments: Record<string, unknown>;
+  }>;
 }
 
 const mapMessages = (messages: Message[]) =>
@@ -99,7 +109,10 @@ export class HttpAIModelGateway implements AIModelGateway {
       ...(settings.customHeaders ?? {})
     };
 
+    const tools = settings.enableToolCalling ? this.getToolDefinitions() : undefined;
+
     switch (settings.preset) {
+      case "openrouter":
       case "openai":
         return {
           url: settings.endpoint,
@@ -110,7 +123,9 @@ export class HttpAIModelGateway implements AIModelGateway {
               model: settings.model,
               temperature: settings.temperature,
               stream: settings.stream,
-              messages: mapMessages(messages)
+              max_tokens: settings.maxTokens || 4096,
+              messages: mapMessages(messages),
+              ...(tools && tools.length > 0 ? { tools } : {})
             })
           },
           streamParser: (line, onChunk) => this.parseOpenAIStream(line, onChunk)
@@ -124,7 +139,8 @@ export class HttpAIModelGateway implements AIModelGateway {
             body: JSON.stringify({
               messages: mapMessages(messages),
               temperature: settings.temperature,
-              stream: settings.stream
+              stream: settings.stream,
+              ...(tools && tools.length > 0 ? { tools } : {})
             })
           },
           streamParser: (line, onChunk) => this.parseOpenAIStream(line, onChunk)
@@ -143,12 +159,13 @@ export class HttpAIModelGateway implements AIModelGateway {
               model: settings.model,
               temperature: settings.temperature,
               system,
-              max_tokens: 4096,
+              max_tokens: settings.maxTokens || 4096,
               stream: settings.stream,
               messages: nonSystem.map((msg) => ({
                 role: msg.role === "assistant" ? "assistant" : "user",
                 content: msg.content
-              }))
+              })),
+              ...(tools && tools.length > 0 ? { tools: this.convertToolsForAnthropic(tools) } : {})
             })
           },
           streamParser: (line, onChunk) => this.parseAnthropicStream(line, onChunk),
@@ -168,7 +185,8 @@ export class HttpAIModelGateway implements AIModelGateway {
               model: settings.model,
               stream: settings.stream,
               options: {
-                temperature: settings.temperature
+                temperature: settings.temperature,
+                num_predict: settings.maxTokens || 4096
               },
               messages: mapMessages(messages)
             })
@@ -181,6 +199,48 @@ export class HttpAIModelGateway implements AIModelGateway {
     }
   }
 
+  private getToolDefinitions(): Array<{
+    type: "function";
+    function: {
+      name: string;
+      description: string;
+      parameters: {
+        type: "object";
+        properties: Record<string, unknown>;
+        required: string[];
+      };
+    };
+  }> {
+    const tools = ToolRegistry.getDefinitions();
+    return tools.map(tool => ({
+      type: "function" as const,
+      function: {
+        name: tool.name,
+        description: tool.description,
+        parameters: {
+          type: "object",
+          properties: tool.parameters.reduce((acc, param) => {
+            acc[param.name] = {
+              type: param.type,
+              description: param.description,
+              ...(param.enum ? { enum: param.enum } : {})
+            };
+            return acc;
+          }, {} as Record<string, unknown>),
+          required: tool.parameters.filter(p => p.required).map(p => p.name)
+        }
+      }
+    }));
+  }
+
+  private convertToolsForAnthropic(tools: ReturnType<typeof this.getToolDefinitions>) {
+    return tools.map(tool => ({
+      name: tool.function.name,
+      description: tool.function.description,
+      input_schema: tool.function.parameters
+    }));
+  }
+
   private splitSystemMessage(messages: Message[]) {
     const system = messages.find((message) => message.role === "system")?.content ?? "";
     const nonSystem = messages.filter((message) => message.role !== "system");
@@ -189,7 +249,7 @@ export class HttpAIModelGateway implements AIModelGateway {
 
   private async readStream(
     body: ReadableStream<Uint8Array>,
-    onLine: (line: string) => boolean | void
+    onLine: (line: string) => boolean | void | Promise<boolean | void>
   ): Promise<void> {
     const reader = body.getReader();
     const decoder = new TextDecoder("utf-8");
@@ -247,6 +307,25 @@ export class HttpAIModelGateway implements AIModelGateway {
       if (content) {
         await onChunk({ id: choice.id ?? choice.index ?? "chunk", content, done: false });
       }
+
+      const toolCalls = choice.delta?.tool_calls;
+      if (toolCalls && Array.isArray(toolCalls)) {
+        for (const tc of toolCalls) {
+          if (tc.function?.name) {
+            const args = tc.function.arguments 
+              ? (typeof tc.function.arguments === "string" 
+                  ? JSON.parse(tc.function.arguments) 
+                  : tc.function.arguments)
+              : {};
+            const result = await ToolRegistry.execute(tc.function.name, args);
+            await onChunk({
+              id: tc.id ?? "tool",
+              content: JSON.stringify(result),
+              done: false
+            });
+          }
+        }
+      }
     }
     return true;
   }
@@ -274,6 +353,16 @@ export class HttpAIModelGateway implements AIModelGateway {
     }
     if (json.type === "message_delta" && json.delta?.stop_reason) {
       return false;
+    }
+    if (json.type === "content_block_start" && json.content_block?.type === "tool_use") {
+      const toolName = json.content_block.name;
+      const toolInput = json.content_block.input || {};
+      const result = await ToolRegistry.execute(toolName, toolInput);
+      await onChunk({
+        id: json.id ?? "tool",
+        content: JSON.stringify(result),
+        done: false
+      });
     }
     return true;
   }
@@ -335,6 +424,7 @@ export class HttpAIModelGateway implements AIModelGateway {
 
   private extractContent(preset: ModelSettings["preset"], payload: any): string {
     switch (preset) {
+      case "openrouter":
       case "openai":
       case "azure": {
         const content = payload.choices?.[0]?.message?.content ?? payload.choices?.[0]?.text;

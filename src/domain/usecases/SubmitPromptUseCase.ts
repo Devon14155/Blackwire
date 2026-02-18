@@ -2,7 +2,16 @@ import type { AIModelGateway } from "@domain/repositories/AIModelGateway";
 import type { ConversationRepository } from "@domain/repositories/ConversationRepository";
 import type { ModelSettings } from "@domain/entities/ModelSettings";
 import type { Message } from "@domain/entities/Message";
+import type { Conversation } from "@domain/entities/Conversation";
 import { createId } from "@core/utils/uuid";
+
+const DEFAULT_CONTEXT: Conversation["context"] = {
+  ragEnabled: false,
+  activeAgentId: null,
+  systemPrompt: null,
+  citations: [],
+  toolCalls: []
+};
 
 export interface SubmitPromptCallbacks {
   onMessagesAppended?: (messages: Message[]) => void;
@@ -30,10 +39,13 @@ export class SubmitPromptUseCase {
       onAssistantMessageUpdate
     };
 
-    const conversation = (await this.conversationRepository.getActiveConversation()) ?? {
+    const existingConversation = await this.conversationRepository.getActiveConversation();
+    const conversation: Conversation = existingConversation ?? {
       id: createId(),
       title: "New conversation",
       messages: [],
+      agentId: null,
+      context: DEFAULT_CONTEXT,
       createdAt: Date.now(),
       updatedAt: Date.now()
     };

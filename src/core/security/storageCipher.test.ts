@@ -30,8 +30,8 @@ class MemoryStorage implements Storage {
 }
 
 beforeEach(() => {
-  // @ts-expect-error vite jsdom environment
-  globalThis.localStorage = new MemoryStorage();
+  // vite jsdom environment allows this
+  (globalThis as any).localStorage = new MemoryStorage();
 });
 
 describe("StorageCipher", () => {
@@ -45,11 +45,9 @@ describe("StorageCipher", () => {
 
   it("returns original value when crypto is unavailable", async () => {
     const originalCrypto = globalThis.crypto;
-    // @ts-expect-error dynamic override
-    globalThis.crypto = undefined;
+    (globalThis as any).crypto = undefined;
     const plain = await StorageCipher.encrypt("plaintext");
     expect(plain).toBe("plaintext");
-    // @ts-expect-error restore polyfill
-    globalThis.crypto = originalCrypto;
+    (globalThis as any).crypto = originalCrypto;
   });
 });

@@ -8,13 +8,133 @@
 
 body {
   @apply bg-background text-foreground antialiased;
+  font-feature-settings: "cv02", "cv03", "cv04", "cv11";
 }
 
 .scrollbar-thin::-webkit-scrollbar {
   width: 6px;
+  height: 6px;
+}
+
+.scrollbar-thin::-webkit-scrollbar-track {
+  background: transparent;
 }
 
 .scrollbar-thin::-webkit-scrollbar-thumb {
   background: rgba(255, 255, 255, 0.1);
   border-radius: 9999px;
+}
+
+.scrollbar-thin::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.2);
+}
+
+@layer utilities {
+  .scrollbar-hide {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+  
+  .scrollbar-hide::-webkit-scrollbar {
+    display: none;
+  }
+}
+
+@layer components {
+  .glass {
+    @apply bg-white/5 backdrop-blur-xl border border-white/10;
+  }
+
+  .glass-dark {
+    @apply bg-black/40 backdrop-blur-xl border border-white/5;
+  }
+
+  .glow-highlight {
+    box-shadow: 0 0 20px rgba(255, 122, 24, 0.35);
+  }
+
+  .glow-accent {
+    box-shadow: 0 0 20px rgba(31, 111, 235, 0.35);
+  }
+
+  .text-gradient {
+    @apply bg-gradient-to-r from-highlight to-accent bg-clip-text text-transparent;
+  }
+}
+
+@layer base {
+  input, textarea, select {
+    @apply outline-none;
+  }
+
+  input:focus, textarea:focus, select:focus {
+    @apply ring-1 ring-highlight/50;
+  }
+
+  button {
+    @apply outline-none;
+  }
+
+  button:focus-visible {
+    @apply ring-2 ring-highlight ring-offset-2 ring-offset-background;
+  }
+
+  a:focus-visible {
+    @apply ring-2 ring-highlight ring-offset-2 ring-offset-background;
+  }
+}
+
+.prose-invert {
+  --tw-prose-body: theme("colors.white" / 80%);
+  --tw-prose-headings: theme("colors.white");
+  --tw-prose-links: theme("colors.highlight");
+  --tw-prose-bold: theme("colors.white");
+  --tw-prose-counters: theme("colors.white" / 40%);
+  --tw-prose-bullets: theme("colors.white" / 40%);
+  --tw-prose-hr: theme("colors.white" / 10%);
+  --tw-prose-quotes: theme("colors.white" / 90%);
+  --tw-prose-quote-borders: theme("colors.highlight");
+  --tw-prose-captions: theme("colors.white" / 50%);
+  --tw-prose-code: theme("colors.white");
+  --tw-prose-pre-code: theme("colors.white" / 90%);
+  --tw-prose-pre-bg: theme("colors.black" / 40);
+  --tw-prose-th-borders: theme("colors.white" / 10%);
+  --tw-prose-td-borders: theme("colors.white" / 5%);
+}
+
+.dnd-dragging {
+  opacity: 0.5;
+  transform: scale(1.02);
+}
+
+.dnd-over {
+  background: rgba(255, 122, 24, 0.1);
+}
+
+@keyframes slide-in-right {
+  from {
+    transform: translateX(100%);
+    opacity: 0;
+  }
+  to {
+    transform: translateX(0);
+    opacity: 1;
+  }
+}
+
+@keyframes fade-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+.animate-slide-in-right {
+  animation: slide-in-right 0.3s ease-out;
+}
+
+.animate-fade-in {
+  animation: fade-in 0.2s ease-out;
 }

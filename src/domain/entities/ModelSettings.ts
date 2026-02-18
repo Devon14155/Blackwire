@@ -1,4 +1,14 @@
-export type ModelPreset = "openai" | "azure" | "anthropic" | "ollama" | "custom";
+export type ModelPreset = "openai" | "azure" | "anthropic" | "ollama" | "openrouter" | "custom";
+
+export interface OpenRouterModel {
+  id: string;
+  name: string;
+  context_length: number;
+  pricing: {
+    prompt: string;
+    completion: string;
+  };
+}
 
 export interface ModelSettings {
   id: string;
@@ -14,6 +24,10 @@ export interface ModelSettings {
   httpMethod?: "POST" | "GET";
   customHeaders?: Record<string, string>;
   customBodyTemplate?: string;
+  enableToolCalling: boolean;
+  enableRAG: boolean;
+  enableThinking: boolean;
+  maxTokens: number;
   createdAt: number;
   updatedAt: number;
 }

@@ -2,6 +2,14 @@ import type { ConversationRepository } from "@domain/repositories/ConversationRe
 import type { Conversation } from "@domain/entities/Conversation";
 import { createId } from "@core/utils/uuid";
 
+const DEFAULT_CONTEXT: Conversation["context"] = {
+  ragEnabled: false,
+  activeAgentId: null,
+  systemPrompt: null,
+  citations: [],
+  toolCalls: []
+};
+
 export class GetOrCreateConversationUseCase {
   constructor(private readonly conversationRepository: ConversationRepository) {}
 
@@ -16,6 +24,8 @@ export class GetOrCreateConversationUseCase {
       id: createId(),
       title: "New conversation",
       messages: [],
+      agentId: null,
+      context: DEFAULT_CONTEXT,
       createdAt: now,
       updatedAt: now
     };

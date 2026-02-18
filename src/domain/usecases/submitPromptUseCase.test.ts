@@ -69,7 +69,15 @@ describe("SubmitPromptUseCase", () => {
       title: "Test",
       createdAt: Date.now(),
       updatedAt: Date.now(),
-      messages: []
+      messages: [],
+      agentId: null,
+      context: {
+        ragEnabled: false,
+        activeAgentId: null,
+        systemPrompt: null,
+        citations: [],
+        toolCalls: []
+      }
     };
     const gateway = new FakeGateway();
     const useCase = new SubmitPromptUseCase(repository, gateway);

@@ -34,7 +34,7 @@ export const createChatStore = (deps: AppContainer) =>
         ]);
         set({
           conversation,
-          messages: conversation.messages,
+          messages: conversation?.messages || [],
           settings,
           loading: false
         });
@@ -91,7 +91,7 @@ export const createChatStore = (deps: AppContainer) =>
       }
       await deps.clearConversation.execute(conversation.id);
       set({
-        conversation: { ...conversation, messages: [] },
+        conversation: { ...conversation, messages: [], context: conversation.context },
         messages: []
       });
     },
